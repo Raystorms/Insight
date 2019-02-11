@@ -88,7 +88,7 @@ namespace Insight
             {
                 InsightNetworkMessage message = new InsightNetworkMessage();
                 message.msgType = msgType;
-                //message.conn = this;
+                message.conn = this;
                 message.reader = reader;
 
                 msgDelegate(message);
@@ -230,7 +230,7 @@ namespace Insight
     public class InsightNetworkMessage
     {
         public short msgType;
-        InsightNetworkConnection conn;
+        public InsightNetworkConnection conn;
         public NetworkReader reader;
         public int callbackId { get; protected set; }
         public int connectionId { get { return conn.connectionId; } }

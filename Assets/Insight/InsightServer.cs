@@ -10,6 +10,7 @@ public class InsightServer : InsightCommon
     protected int serverHostId = -1;
     protected Dictionary<int, InsightNetworkConnection> connections = new Dictionary<int, InsightNetworkConnection>();
     protected List<SendToAllFinishedCallbackData> sendToAllFinishedCallbacks = new List<SendToAllFinishedCallbackData>();
+    public bool dontDestroyOnLoad = true;
 
     Transport _transport;
     public virtual Transport transport
@@ -25,7 +26,7 @@ public class InsightServer : InsightCommon
 
     public virtual void Start()
     {
-        DontDestroyOnLoad(this);
+        if(dontDestroyOnLoad) DontDestroyOnLoad(this);
         Application.runInBackground = true;
 
         transport.OnServerConnected.AddListener(HandleConnect);
@@ -79,6 +80,7 @@ public class InsightServer : InsightCommon
         InsightNetworkConnection conn = new InsightNetworkConnection();
         conn.Initialize(this, address, serverHostId, connectionId);
         AddConnection(conn);
+        conn.InvokeHandlerNoData((short)MsgType.Connect);
     }
 
     private void HandleDisconnect(int connectionId)
@@ -89,6 +91,7 @@ public class InsightServer : InsightCommon
         if (connections.TryGetValue(connectionId, out conn))
         {
             conn.Disconnect();
+            conn.InvokeHandlerNoData((short)MsgType.Disconnect);
             RemoveConnection(connectionId);
         }
     }
