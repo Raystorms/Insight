@@ -43,8 +43,6 @@ namespace Insight
         {
             server.RegisterHandler((short)MsgId.StartMatchMaking, HandleStartMatchSearchMsg);
             server.RegisterHandler((short)MsgId.StopMatchMaking, HandleStopMatchSearchMsg);
-            server.RegisterHandler((short)MsgId.MatchList, HandleMatchListMsg);
-            server.RegisterHandler((short)MsgId.JoinMatch, HandleJoinMatchMsg);
         }
 
         void UpdateStuff()
@@ -72,25 +70,6 @@ namespace Insight
             }
         }
 
-        private void HandleMatchListMsg(InsightNetworkMessage netMsg)
-        {
-            if (server.logNetworkMessages) { UnityEngine.Debug.Log("[MatchMaking] - Player Requesting Match list"); }
-
-            netMsg.Reply((short)MsgId.MatchList, new MatchList());
-        }
-
-        private void HandleJoinMatchMsg(InsightNetworkMessage netMsg)
-        {
-            if (server.logNetworkMessages) { UnityEngine.Debug.Log("[MatchMaking] - Player joining Match."); }
-
-            netMsg.Reply((short)MsgId.ChangeServers, new ChangeServers()
-            { 
-                NetworkAddress = "",
-                NetworkPort = 0,
-                SceneName = ""        
-            });
-        }
-
         private void UpdateQueue()
         {
             if (playerQueue.Count < MinimumPlayersForGame)
@@ -105,7 +84,6 @@ namespace Insight
                 return;
             }
 
-            //Create Match
             CreateMatch();
         }
 
@@ -115,8 +93,9 @@ namespace Insight
             string uniqueID = Guid.NewGuid().ToString();
 
             //Specify the match details
-            RequestSpawn requestSpawn = new RequestSpawn()
+            RequestSpawnMsg requestSpawn = new RequestSpawnMsg()
             {
+                //This should not be hard coded. Where should it go?
                 ProcessAlias = "gameserver",
                 SceneName = "SuperAwesomeGame",
                 UniqueID = uniqueID
@@ -148,24 +127,15 @@ namespace Insight
         }
     }
 
-    public struct MatchMakingUser
-    {
-        public string playlistName;
-        public UserContainer user;
-    }
-
     public class MatchContainer
     {
         public ServerMatchMaking matchModule;
         public GameContainer MatchServer;
         public List<UserContainer> matchUsers;
-        public string SceneName;
-        public int MaxPlayer;
-        public int CurrentPlayers;
 
         //These two are probably redundant
         public string playlistName;
-        public RequestSpawn matchProperties;
+        public RequestSpawnMsg matchProperties;
 
         public DateTime matchStartTime;
         public float MatchTimeoutInSeconds = 30f; //How long to wait for the server to start before cancelling the match and returning the players to the queue
@@ -173,7 +143,7 @@ namespace Insight
         public bool InitMatch;
         public bool MatchComplete;
 
-        public MatchContainer(ServerMatchMaking MatchModule, RequestSpawn MatchProperties, List<UserContainer> MatchUsers)
+        public MatchContainer(ServerMatchMaking MatchModule, RequestSpawnMsg MatchProperties, List<UserContainer> MatchUsers)
         {
             matchModule = MatchModule;
             matchProperties = MatchProperties;
@@ -207,7 +177,7 @@ namespace Insight
                     //Move players to server
                     foreach (UserContainer user in matchUsers)
                     {
-                        matchModule.server.SendToClient(user.connectionId, (short)MsgId.ChangeServers, new ChangeServers()
+                        matchModule.server.SendToClient(user.connectionId, (short)MsgId.ChangeServers, new ChangeServerMsg()
                         {
                             NetworkAddress = MatchServer.NetworkAddress,
                             NetworkPort = MatchServer.NetworkPort,

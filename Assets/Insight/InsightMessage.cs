@@ -1,4 +1,5 @@
 using Mirror;
+using System.Collections.Generic;
 
 namespace Insight
 {
@@ -9,19 +10,31 @@ namespace Insight
         Status,
 
         Login,
-        Chat,
+        LoginResponse,
 
+        //Chat
+        Chat,
+        JoinChatChannel,
+        LeaveChatChannel,
+
+        //GameManager
         RegisterSpawner,
         RegisterGame,
+        GameList,
+        JoinGame,
+        LeaveGame,
 
+        //ProcessSpawner
         RequestSpawn,
-        RequestGame,
+        KillSpawn,
+
+        //MatchMaking
         StartMatchMaking,
         StopMatchMaking,
-        MatchList,
-        JoinMatch,
-
+        
         ChangeServers,
+        
+        //Health Management Msgs
         SpawnerStatus,
     }
 
@@ -53,11 +66,29 @@ namespace Insight
         public string AccountPassword;
     }
 
+    public class LoginResponseMsg : MessageBase
+    {
+        public bool Authenticated;
+        public string UniqueID;
+    }
+
     public class ChatMsg : MessageBase
     {
-        public string Data;
-        public string Origin;
+        public short Channel; //0 for global
+        public string Origin; //This could be controlled by the server.
         public string Target; //Used for private chat
+        public string Data;
+    }
+
+    public class JoinChatChannelMsg : MessageBase
+    {
+        public short Channel;
+        public string ChannelPassword;
+    }
+
+    public class LeaveChatChannelMsg : MessageBase
+    {
+        public short Channel;
     }
 
     public class RegisterSpawnerMsg : MessageBase
@@ -72,9 +103,11 @@ namespace Insight
         public string NetworkAddress;
         public ushort NetworkPort;
         public string SceneName;
+        public int MaxPlayers;
+        public int CurrentPlayers;
     }
 
-    public class RequestSpawn : MessageBase
+    public class RequestSpawnMsg : MessageBase
     {
         public string ProcessAlias;
         public string SceneName;
@@ -84,28 +117,38 @@ namespace Insight
         public string NetworkAddress; 
     }
 
-    public class StartMatchMaking : MessageBase
+    public class KillSpawnMsg : MessageBase
+    {
+        public string UniqueID; //Guid
+    }
+
+    public class StartMatchMakingMsg : MessageBase
     {
         public string PlayListName;
     }
 
-    public class StopMatchMaking : MessageBase
+    public class StopMatchMakingMsg : MessageBase
     {
 
     }
 
-    public class MatchList : MessageBase
+    public class GameListMsg : MessageBase
     {
+        public GameContainer[] gamesArray;
 
+        public void Load(List<GameContainer> gamesList)
+        {
+            gamesArray = gamesList.ToArray();
+        }
     }
 
-    public class JoinMatch : MessageBase
+    public class JoinGamMsg : MessageBase
     {
         public string UniqueID;
     }
 
     //Used to tell a player to connect to a new game server
-    public class ChangeServers : MessageBase
+    public class ChangeServerMsg : MessageBase
     {
         public string NetworkAddress;
         public ushort NetworkPort;
@@ -113,7 +156,7 @@ namespace Insight
     }
 
     //Updates the MasterSpawner with current status
-    public class SpawnerStatus : MessageBase
+    public class SpawnerStatusMsg : MessageBase
     {
         public int CurrentThreads;
     }

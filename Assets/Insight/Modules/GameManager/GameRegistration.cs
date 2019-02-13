@@ -1,6 +1,5 @@
 ﻿using Insight;
 using Mirror;
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -20,6 +19,10 @@ public class GameRegistration : InsightModule
     public string NetworkAddress;
     public ushort NetworkPort;
     public string UniqueID;
+
+    //These should probably be synced from the NetworkManager
+    public int MaxPlayers;
+    public int CurrentPlayers;
 
     public override void Initialize(InsightClient insight, ModuleManager manager)
     {
@@ -74,6 +77,14 @@ public class GameRegistration : InsightModule
     private void SendGameRegistrationToGameManager()
     {
         Debug.Log("[GameRegistration] - registering with master");
-        client.Send((short)MsgId.RegisterGame, new RegisterGameMsg() { UniqueID = UniqueID, SceneName = GameScene , NetworkPort = NetworkPort, NetworkAddress = NetworkAddress});
+        client.Send((short)MsgId.RegisterGame, new RegisterGameMsg()
+        {
+            NetworkAddress = NetworkAddress,
+            NetworkPort = NetworkPort,
+            UniqueID = UniqueID,
+            SceneName = GameScene,
+            MaxPlayers = MaxPlayers,
+            CurrentPlayers = CurrentPlayers
+        });
     }
 }

@@ -26,6 +26,8 @@ public class ServerGameManager : InsightModule
     void RegisterHandlers()
     {
         server.RegisterHandler((short)MsgId.RegisterGame, HandleRegisterGameMsg);
+        server.RegisterHandler((short)MsgId.JoinGame, HandleJoinGameMsg);
+        server.RegisterHandler((short)MsgId.GameList, HandleGameListMsgMsg);
     }
 
     private void HandleRegisterGameMsg(InsightNetworkMessage netMsg)
@@ -35,11 +37,15 @@ public class ServerGameManager : InsightModule
         if (server.logNetworkMessages) { Debug.Log("Received GameRegistration request"); }
 
         registeredGameServers.Add(new GameContainer() {
-            connectionId = netMsg.connectionId,
+            NetworkAddress = message.NetworkAddress,
+            NetworkPort = message.NetworkPort,
             UniqueId = message.UniqueID,
             SceneName = message.SceneName,
-            NetworkAddress = message.NetworkAddress,
-            NetworkPort = message.NetworkPort});
+            MaxPlayers = message.MaxPlayers,
+            CurrentPlayers = message.CurrentPlayers,
+
+            connectionId = netMsg.connectionId,
+        });
     }
 
     private void HandleDisconnect(int connectionId)
@@ -54,8 +60,42 @@ public class ServerGameManager : InsightModule
         }
     }
 
-    //Take in the options here
-    public void RequestGameSpawn(RequestSpawn requestSpawn)
+    private void HandleGameListMsgMsg(InsightNetworkMessage netMsg)
+    {
+        if (server.logNetworkMessages) { UnityEngine.Debug.Log("[MatchMaking] - Player Requesting Match list"); }
+
+        GameListMsg gamesListMsg = new GameListMsg();
+        gamesListMsg.Load(registeredGameServers);
+
+        netMsg.Reply((short)MsgId.GameList, gamesListMsg);
+    }
+
+    private void HandleJoinGameMsg(InsightNetworkMessage netMsg)
+    {
+        JoinGamMsg message = netMsg.ReadMessage<JoinGamMsg>();
+
+        if (server.logNetworkMessages) { UnityEngine.Debug.Log("[MatchMaking] - Player joining Match."); }
+
+        GameContainer game = GetGameByUniqueID(message.UniqueID);
+
+        if (game == null)
+        {
+            //Something went wrong
+            //netMsg.Reply((short)MsgId.ChangeServers, new ChangeServerMsg());
+        }
+        else
+        {
+            netMsg.Reply((short)MsgId.ChangeServers, new ChangeServerMsg()
+            {
+                NetworkAddress = game.NetworkAddress,
+                NetworkPort = game.NetworkPort,
+                SceneName = game.SceneName
+            });
+        }
+    }
+
+    //Used by MatchMaker to request a GameServer for a new Match
+    public void RequestGameSpawn(RequestSpawnMsg requestSpawn)
     {
         masterSpawner.InternalSpawnRequest(requestSpawn);
     }
@@ -81,6 +121,7 @@ public class GameContainer
     public int connectionId;
 
     public string SceneName;
-    public int MaxPlayer;
+    public int MaxPlayers;
+    public int MinPlayers;
     public int CurrentPlayers;
 }

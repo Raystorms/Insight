@@ -33,9 +33,33 @@ public class ServerAuthentication : InsightModule
         
         if (server.logNetworkMessages) { Debug.Log("[InsightServer] - Login Received: " + message.AccountName + " / " + message.AccountPassword); }
 
-        registeredUsers.Add(new UserContainer() { username = message.AccountName, uniqueId = Guid.NewGuid().ToString(), connectionId = netMsg.connectionId});
+        //Login Sucessful
+        if(true) //Put your DB logic here
+        {
+            string UniqueId = Guid.NewGuid().ToString();
 
-        netMsg.Reply((short)MsgId.Status, new StatusMsg() { Text = "Login Sucessful!" });
+            registeredUsers.Add(new UserContainer()
+            {
+                username = message.AccountName,
+                uniqueId = UniqueId,
+                connectionId = netMsg.connectionId
+            });
+
+            netMsg.Reply((short)MsgId.LoginResponse, new LoginResponseMsg()
+            {
+                Authenticated = true,
+                UniqueID = UniqueId
+            });
+        }
+
+        //Login Failed
+        else
+        {
+            netMsg.Reply((short)MsgId.LoginResponse, new LoginResponseMsg()
+            {
+                Authenticated = false
+            });
+        }
     }
 
     private void HandleDisconnect(int connectionId)
