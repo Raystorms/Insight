@@ -10,9 +10,9 @@ namespace Insight
     {
         [HideInInspector] public InsightServer server;
         [HideInInspector] public ModuleManager manager;
-        public ServerAuthentication authModule;
-        public ServerGameManager gameManager;
-        public MasterSpawner masterSpawner;
+        [HideInInspector] public ServerAuthentication authModule;
+        [HideInInspector] public ServerGameManager gameManager;
+        [HideInInspector] public MasterSpawner masterSpawner;
 
         public int MinimumPlayersForGame = 1;
         public float MatchMakingPollRate = 10f;
@@ -96,10 +96,9 @@ namespace Insight
             string uniqueID = Guid.NewGuid().ToString();
 
             //Specify the match details
-            RequestSpawnMsg requestSpawn = new RequestSpawnMsg()
+            RequestSpawnStartMsg requestSpawnStart = new RequestSpawnStartMsg()
             {
                 //This should not be hard coded. Where should it go?
-                ProcessAlias = "gameserver",
                 SceneName = "SuperAwesomeGame",
                 UniqueID = uniqueID
             };
@@ -114,7 +113,7 @@ namespace Insight
                 playerQueue.RemoveAt(i);
             }
 
-            matchList.Add(new MatchContainer(this, requestSpawn, matchUsers));
+            matchList.Add(new MatchContainer(this, requestSpawnStart, matchUsers));
         }
 
         private void UpdateMatches()
@@ -139,19 +138,21 @@ namespace Insight
 
         //These two are probably redundant
         public string playlistName;
-        public RequestSpawnMsg matchProperties;
+        public RequestSpawnStartMsg matchProperties;
 
+        //How long to wait for the server to start before cancelling the match and returning the players to the queue
+        //-1 or 0 will disable timeout
+        public float MatchTimeoutInSeconds = 30f;
         public DateTime matchStartTime;
-        public float MatchTimeoutInSeconds = 30f; //How long to wait for the server to start before cancelling the match and returning the players to the queue
 
         public bool InitMatch;
         public bool MatchComplete;
 
-        public MatchContainer(ServerMatchMaking MatchModule, RequestSpawnMsg MatchProperties, List<UserContainer> MatchUsers)
+        public MatchContainer(ServerMatchMaking MatchModule, RequestSpawnStartMsg MatchProperties, List<UserContainer> MatchUsers)
         {
             matchModule = MatchModule;
             matchProperties = MatchProperties;
-            matchModule.gameManager.RequestGameSpawn(matchProperties);
+            matchModule.gameManager.RequestGameSpawnStart(matchProperties);
             matchUsers = MatchUsers;
             matchStartTime = DateTime.UtcNow;
         }
@@ -160,35 +161,42 @@ namespace Insight
         {
             if(!InitMatch)
             {
-                //Check to see if the server is up
-                if (matchModule.gameManager.GetGameByUniqueID(matchProperties.UniqueID) == null)
-                {
-                    //Server spawn timeout check
-                    if(matchStartTime.AddSeconds(MatchTimeoutInSeconds) < DateTime.UtcNow)
-                    {
-                        CancelMatch();
-                    }
-
-                    UnityEngine.Debug.Log("Server not active at this time");
-                    return;
-                }
-                //Server is registered and active
-                else
+                if(IsSpawnServerActive())
                 {
                     InitMatch = true;
                     MatchServer = matchModule.gameManager.GetGameByUniqueID(matchProperties.UniqueID);
 
-                    //Move players to server
-                    foreach (UserContainer user in matchUsers)
-                    {
-                        matchModule.server.SendToClient(user.connectionId, (short)MsgId.ChangeServers, new ChangeServerMsg()
-                        {
-                            NetworkAddress = MatchServer.NetworkAddress,
-                            NetworkPort = MatchServer.NetworkPort,
-                            SceneName = MatchServer.SceneName
-                        });
-                    }
+                    MovePlayersToServer();
                 }
+            }
+        }
+
+        private bool IsSpawnServerActive()
+        {
+            if (matchModule.gameManager.GetGameByUniqueID(matchProperties.UniqueID) == null)
+            {
+                //Server spawn timeout check
+                if (MatchTimeoutInSeconds > 0 && matchStartTime.AddSeconds(MatchTimeoutInSeconds) < DateTime.UtcNow)
+                {
+                    CancelMatch();
+                }
+
+                UnityEngine.Debug.Log("Server not active at this time");
+                return false;
+            }
+            return true;
+        }
+
+        private void MovePlayersToServer()
+        {
+            foreach (UserContainer user in matchUsers)
+            {
+                matchModule.server.SendToClient(user.connectionId, (short)MsgId.ChangeServers, new ChangeServerMsg()
+                {
+                    NetworkAddress = MatchServer.NetworkAddress,
+                    NetworkPort = MatchServer.NetworkPort,
+                    SceneName = MatchServer.SceneName
+                });
             }
         }
 

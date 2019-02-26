@@ -1,4 +1,5 @@
 ﻿using Insight;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -6,27 +7,37 @@ public enum PlayerClientGUIState { Login, Main, Game};
 
 public class PlayerClientGUI : MonoBehaviour
 {
+    [Header("Root UI Panels")]
     public GameObject RootLoginPanel;
     public GameObject RootMainPanel;
     public GameObject RootGamePanel;
 
-    public PlayerClientGUIState playerGuiState;
+    [HideInInspector] public PlayerClientGUIState playerGuiState;
 
+    [Header("Insight Modules")]
     public ClientAuthentication authComp;
     public ChatClient chatComp;
+    public ClientGameManager gameComp;
     public ClientMatchMaking matchComp;
 
+    [Header("UI Buttons")]
     public GameObject StartMatchMakingButton;
     public GameObject StopMatchMakingButton;
     public GameObject GetGameListButton;
     public GameObject CreateGameButton;
 
+    [Header("Game List UI Panels")]
     public GameObject GameListArea;
     public GameObject GameListPanel;
 
     public GameObject GameListItemPrefab;
 
     public Text chatTextField;
+
+    public List<GameContainer> gamesList = new List<GameContainer>();
+
+    [Header("Playlist/Game Name")]
+    public string GameName = "SuperAwesomeGame";
 
     private void Start()
     {
@@ -48,6 +59,7 @@ public class PlayerClientGUI : MonoBehaviour
                 break;
             case PlayerClientGUIState.Main:
                 SwitchToMain();
+                CheckGamesList();
                 break;
             case PlayerClientGUIState.Game:
                 SwitchToGame();
@@ -94,7 +106,7 @@ public class PlayerClientGUI : MonoBehaviour
         StartMatchMakingButton.SetActive(false);
         StopMatchMakingButton.SetActive(true);
 
-        matchComp.SendStartMatchMaking();
+        matchComp.SendStartMatchMaking(new StartMatchMakingMsg() { SceneName = GameName });
     }
 
     public void HandleStopMatchMakingButton()
@@ -107,18 +119,19 @@ public class PlayerClientGUI : MonoBehaviour
 
     public void HandleGetGameListButton()
     {
-        matchComp.SendGetGameListMsg();
+        gameComp.SendGetGameListMsg();
 
         GetGameListButton.SetActive(false);
         StartMatchMakingButton.SetActive(false);
         StopMatchMakingButton.SetActive(false);
+        CreateGameButton.SetActive(false);
 
         GameListArea.SetActive(true);
     }
 
     public void HandleJoinGameButton(string UniqueID)
     {
-        matchComp.SendJoinGameMsg(UniqueID);
+        gameComp.SendJoinGameMsg(UniqueID);
 
         playerGuiState = PlayerClientGUIState.Game;
     }
@@ -130,22 +143,34 @@ public class PlayerClientGUI : MonoBehaviour
         GetGameListButton.SetActive(true);
         StartMatchMakingButton.SetActive(true);
         StopMatchMakingButton.SetActive(false);
+        CreateGameButton.SetActive(true);
     }
 
     public void HandleCreateGameButton()
     {
-
-        matchComp.SendRequestSpawn();
+        gameComp.SendRequestSpawnStart(new RequestSpawnStartMsg() { SceneName = GameName });
     }
 
     public void HandleSendChatButton(string Data)
     {
         chatComp.SendChatMsg(Data);
     }
+    
+    private void CheckGamesList()
+    {
+        gamesList.Clear();
+
+        if (gameComp.gamesList.Count > 0)
+        {
+            gamesList.AddRange(gameComp.gamesList);
+            gameComp.gamesList.Clear();
+            UpdateGameListUI();
+        }
+    }
 
     public void UpdateGameListUI()
     {
-        foreach (GameContainer game in matchComp.gamesList)
+        foreach (GameContainer game in gamesList)
         {
             GameObject instance = Instantiate(GameListItemPrefab);
             instance.transform.parent = GameListPanel.transform;
