@@ -75,7 +75,7 @@ namespace Insight
             InsightNetworkMessageDelegate msgDelegate;
             if (m_MessageHandlers.TryGetValue(msgType, out msgDelegate))
             {
-                InsightNetworkMessage message = new InsightNetworkMessage();
+                InsightNetworkMessage message = new InsightNetworkMessage(this);
                 message.msgType = msgType;
                 message.reader = reader;
 
@@ -183,7 +183,7 @@ namespace Insight
     public class InsightNetworkMessage
     {
         public short msgType;
-        InsightNetworkConnection conn;
+        public InsightNetworkConnection conn;
         public NetworkReader reader;
         public int callbackId { get; protected set; }
         public int connectionId { get { return conn.connectionId; } }
@@ -201,6 +201,7 @@ namespace Insight
         public InsightNetworkMessage(InsightNetworkConnection conn, int callbackId)
         {
             this.callbackId = callbackId;
+            Debug.Log(conn);
             this.conn = conn;
         }
 

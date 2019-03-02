@@ -89,6 +89,7 @@ namespace Insight
             if (connections.TryGetValue(connectionId, out conn))
             {
                 conn.Disconnect();
+                conn.InvokeHandlerNoData((short)MsgType.Disconnect);
                 RemoveConnection(connectionId);
             }
         }
@@ -138,6 +139,7 @@ namespace Insight
                 // would throw NRE
                 connections[conn.connectionId] = conn;
                 conn.SetHandlers(messageHandlers);
+                conn.InvokeHandlerNoData((short)MsgType.Connect);
                 return true;
             }
             // already a connection with this id
